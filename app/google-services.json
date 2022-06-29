@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "172384936783",
+    "firebase_url": "https://demoquizproject-72692.firebaseio.com",
+    "project_id": "demoquizproject-72692",
+    "storage_bucket": "demoquizproject-72692.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:172384936783:android:ff7529c66b941fd2c55b3a",
+        "android_client_info": {
+          "package_name": "com.shobhitsagar.locationtracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "172384936783-3ok8ideq4f7vcv31valposjn62738qt2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ-Cmkx3FB8TWfTh9tTYpegktsyGtoyK4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "172384936783-3ok8ideq4f7vcv31valposjn62738qt2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
