@@ -3,15 +3,15 @@ package com.shobhitsagar.locationtracker
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -35,6 +35,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
 
+    private var cuLat: Double = 0.0
+    private var cuLng: Double = 0.0
+    private var tempId: String? = null
+    private var startServiceId: String = "9213143881"
+    private var reqServiceId: String = "9213143881"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         bind = ActivityMainBinding.inflate(layoutInflater)
@@ -55,15 +61,105 @@ class MainActivity : AppCompatActivity() {
 
         databaseListener()
 
-        bind.startBtn.setOnClickListener { startSendingLocation() }
+        bind.startBtn.setOnClickListener {
+            tempId = bind.startServiceEt.text.toString()
+            if (!tempId.isNullOrBlank()) {
+                startServiceId = tempId as String
+            }
+            startSendingLocation()
+        }
         bind.stopBtn.setOnClickListener { stopSendingLocation() }
+        bind.requestServiceBtn.setOnClickListener {
+            tempId = bind.requestServiceEt.text.toString()
+            if (!tempId.isNullOrBlank()) {
+                reqServiceId = tempId as String
+            }
+            startDistanceService()
+        }
 
         showStartButton()
     }
 
+//    private fun isIDAvailable(): Boolean {
+//        dbRef.child(tempId)
+//    }
+
+    private fun startDistanceService() {
+
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            loadingDialog.dismiss()
+            Snackbar.make(bind.rootView, "Location permission denied.", Snackbar.LENGTH_INDEFINITE)
+                .setAction("Retry") {
+                    checkLocationSettings()
+                }
+                .setAnchorView(bind.startBtn)
+                .show()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestPermissions(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ),
+                    LOCATION_PERMISSION_REQUEST_CODE
+                )
+            }
+            return
+        }
+
+        fusedLocationClient.lastLocation.addOnSuccessListener {
+            cuLat = it.latitude
+            cuLng = it.longitude
+        }
+
+        fusedLocationClient.lastLocation.addOnFailureListener {
+            Snackbar.make(bind.rootView, "Something went wrong.", Snackbar.LENGTH_SHORT)
+                .setAction("Retry") {
+                    checkLocationSettings()
+                }
+                .setAnchorView(bind.startBtn)
+                .show()
+        }
+
+        distanceHandler()
+    }
+
+    private fun distanceHandler() {
+        dbRef.child(reqServiceId).addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val lat = (snapshot.child("lat").value.toString()).toDouble()
+                val lng = (snapshot.child("lng").value.toString()).toDouble()
+
+                val results = FloatArray(1)
+                Location.distanceBetween(
+                    cuLat, cuLng,
+                    lat, lng, results
+                )
+                val distance = results[0]
+
+                val intDistance = distance.toInt()
+                val distUnit = if (intDistance > 1000) "Kms" else "meters"
+
+                bind.textView.text = "$intDistance $distUnit away"
+                startDistanceService()
+            }
+
+            override fun onCancelled(p0: DatabaseError) {
+                Log.e(TAG, "onCancelled: Firebase Database Error", p0.toException())
+            }
+
+        })
+    }
+
     private fun databaseListener() {
         var i = 0
-        dbRef.child("9213143881").addValueEventListener(object : ValueEventListener {
+        dbRef.child(startServiceId).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val lat = snapshot.child("lat").value.toString()
                 val lng = snapshot.child("lng").value.toString()
@@ -154,27 +250,6 @@ class MainActivity : AppCompatActivity() {
             locationCallback,
             Looper.getMainLooper()
         )
-
-//        fusedLocationClient.lastLocation.addOnSuccessListener {
-//            val lat = it.latitude
-//            val lng = it.longitude
-//
-//            bind.textView.text = "Latitude : $lat\nLongitude : $lng"
-//
-//            dbRef.child("9213143881").apply {
-//                child("lat").setValue(lat)
-//                child("lng").setValue(lng)
-//            }
-//        }
-//
-//        fusedLocationClient.lastLocation.addOnFailureListener {
-//            Snackbar.make(bind.rootView, "Something went wrong.", Snackbar.LENGTH_SHORT)
-//                .setAction("Retry") {
-//                    checkLocationSettings()
-//                }
-//                .setAnchorView(bind.startBtn)
-//                .show()
-//        }
     }
 
     override fun onRequestPermissionsResult(
@@ -219,7 +294,7 @@ class MainActivity : AppCompatActivity() {
 
 //                    bind.textView.text = "Latitude : $lat\nLongitude : $lng"
 
-                    dbRef.child("9213143881").apply {
+                    dbRef.child(startServiceId).apply {
                         child("lat").setValue(lat)
                         child("lng").setValue(lng)
                     }

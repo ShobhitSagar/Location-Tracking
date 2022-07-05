@@ -8,6 +8,21 @@
     android:padding="16dp"
     tools:context=".MainActivity">
 
+    <EditText
+        android:id="@+id/start_service_et"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter your ID to start location service"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/request_service_et"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="Enter your ID to request location service"
+        app:layout_constraintTop_toBottomOf="@id/start_service_et" />
+
     <TextView
         android:id="@+id/textView"
         android:layout_width="wrap_content"
