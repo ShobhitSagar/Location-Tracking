@@ -5,64 +5,137 @@
     android:id="@+id/root_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
+    android:background="@color/background"
     tools:context=".MainActivity">
 
-    <EditText
-        android:id="@+id/start_service_et"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Enter your ID to start location service"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <EditText
-        android:id="@+id/request_service_et"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:hint="Enter your ID to request location service"
-        app:layout_constraintTop_toBottomOf="@id/start_service_et" />
-
     <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <Button
-        android:id="@+id/request_service_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:id="@+id/action_bar1"
+        android:layout_width="match_parent"
+        android:layout_height="66dp"
+        android:background="@color/purple_500"
+        android:textSize="20sp"
         android:gravity="center"
-        android:text="Request Service"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
+        android:textColor="@color/white"
+        android:text="Location Tracker"
+        app:layout_constraintTop_toTopOf="parent"/>
 
-    <Button
-        android:id="@+id/start_btn"
+    <androidx.cardview.widget.CardView
+        android:id="@+id/data_cv"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:backgroundTint="@color/green"
-        android:gravity="center"
-        android:text="Start"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        android:layout_margin="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="3dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/action_bar1"
+        tools:layout_editor_absoluteX="18dp">
 
-    <Button
-        android:id="@+id/stop_btn"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:layout_margin="16dp">
+
+            <TextView
+                android:id="@+id/textView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hello World!"
+                android:textSize="22sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/start_service_cv"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:visibility="gone"
-        android:backgroundTint="@color/red"
-        android:gravity="center"
-        android:text="Stop"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        android:layout_margin="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="3dp"
+        app:layout_constraintTop_toBottomOf="@+id/data_cv"
+        tools:layout_editor_absoluteX="18dp">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp">
+
+            <EditText
+                android:id="@+id/start_service_et"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Enter your ID (10-digit mobile number)"
+                android:inputType="number"
+                android:maxLength="10"
+                android:gravity="center"
+                android:maxLines="1"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <Button
+                android:id="@+id/start_btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="6dp"
+                android:backgroundTint="@color/green"
+                android:gravity="center"
+                android:text="Start Service"
+                app:layout_constraintTop_toBottomOf="@id/start_service_et" />
+
+            <Button
+                android:id="@+id/stop_btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="6dp"
+                android:backgroundTint="@color/red"
+                android:gravity="center"
+                android:text="Stop Service"
+                android:visibility="gone"
+                app:layout_constraintTop_toBottomOf="@id/start_service_et" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/request_service_cv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="3dp"
+        app:layout_constraintTop_toBottomOf="@+id/start_service_cv"
+        tools:layout_editor_absoluteX="18dp">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp">
+
+            <EditText
+                android:id="@+id/request_service_et"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Enter an ID to request location service"
+                android:inputType="number"
+                android:maxLength="10"
+                android:gravity="center"
+                android:maxLines="1"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:layout_editor_absoluteX="16dp" />
+
+            <Button
+                android:id="@+id/request_service_btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:text="Request Location"
+                app:layout_constraintTop_toBottomOf="@+id/request_service_et" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

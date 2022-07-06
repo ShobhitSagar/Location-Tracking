@@ -1,6 +1,7 @@
 package com.shobhitsagar.locationtracker
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
@@ -10,6 +11,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.common.api.ResolvableApiException
@@ -18,19 +20,18 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.database.*
 import com.shobhitsagar.locationtracker.databinding.ActivityMainBinding
-import com.shobhitsagar.locationtracker.utils.LoadingDialog
-import com.shobhitsagar.locationtracker.utils.LoadingDialog.Companion.LOADING_DIALOG
 
 private const val TAG = "MainActivity"
 
 class MainActivity : AppCompatActivity() {
 
+    private var isServiceRunning: Boolean = false
     private lateinit var serviceIntent: Intent
     private lateinit var db: FirebaseDatabase
     private lateinit var dbRef: DatabaseReference
 
     private lateinit var bind: ActivityMainBinding
-    private lateinit var loadingDialog: LoadingDialog
+    private lateinit var loadingDialog: AlertDialog
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
@@ -38,8 +39,8 @@ class MainActivity : AppCompatActivity() {
     private var cuLat: Double = 0.0
     private var cuLng: Double = 0.0
     private var tempId: String? = null
-    private var startServiceId: String = "9213143881"
-    private var reqServiceId: String = "9213143881"
+    private var currentUserId: String? = null
+    private var requestId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,8 +48,17 @@ class MainActivity : AppCompatActivity() {
         setContentView(bind.root)
 
         val appName = getString(R.string.app_name)
-        loadingDialog = LoadingDialog()
+        loadingDialog = loadingDialog()
         serviceIntent = Intent(this, MyBgService::class.java)
+
+        val sharedPref = getPreferences(Context.MODE_PRIVATE) ?: return
+        currentUserId = sharedPref.getString(getString(R.string.current_user_id), "")
+        requestId = sharedPref.getString(getString(R.string.request_id), "")
+        isServiceRunning = sharedPref.getBoolean(getString(R.string.is_service_running), false)
+
+        if (!currentUserId.isNullOrBlank()) bind.startServiceEt.setText(currentUserId)
+        if (!requestId.isNullOrBlank()) bind.requestServiceEt.setText(requestId)
+        if (isServiceRunning) showStopButton() else showStartButton()
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         locationRequest = LocationRequest.create()
@@ -61,28 +71,91 @@ class MainActivity : AppCompatActivity() {
 
         databaseListener()
 
+        // Start Service
         bind.startBtn.setOnClickListener {
             tempId = bind.startServiceEt.text.toString()
+
             if (!tempId.isNullOrBlank()) {
-                startServiceId = tempId as String
+                currentUserId = tempId as String
+                loadingDialog.show()
+                with (sharedPref.edit()) {
+                    putString(getString(R.string.current_user_id), tempId)
+                    putBoolean(getString(R.string.is_service_running), true)
+                    apply()
+                }
+                startSendingLocation()
+            } else {
+                showSnakbar("Please enter a valid Id.")
+                bind.startServiceEt.error = "A valid Id is required."
             }
-            startSendingLocation()
         }
-        bind.stopBtn.setOnClickListener { stopSendingLocation() }
+
+        // Stop Service
+        bind.stopBtn.setOnClickListener {
+            tempId = bind.startServiceEt.text.toString()
+
+            with (sharedPref.edit()) {
+                putBoolean(getString(R.string.is_service_running), false)
+                apply()
+            }
+
+            if (!tempId.isNullOrBlank()) {
+                currentUserId = tempId as String
+                loadingDialog.show()
+
+                dbRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snap: DataSnapshot) {
+                        if (snap.hasChild(requestId!!)) {
+                            stopSendingLocation()
+                        } else showSnakbar("Wrong ID or user doesn't exists.")
+                    }
+
+                    override fun onCancelled(p0: DatabaseError) {
+                        loadingDialog.dismiss()
+                        showSnakbar("Something went wrong!")
+                    }
+                })
+            } else {
+                showSnakbar("Please enter a valid Id.")
+                bind.startServiceEt.error = "A valid Id is required."
+            }
+        }
+
+        // Request Service
         bind.requestServiceBtn.setOnClickListener {
             tempId = bind.requestServiceEt.text.toString()
+
             if (!tempId.isNullOrBlank()) {
-                reqServiceId = tempId as String
+                requestId = tempId as String
+                loadingDialog.show()
+                dbRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snap: DataSnapshot) {
+                        if (snap.hasChild(requestId!!)) {
+                            startDistanceService()
+                            with (sharedPref.edit()) {
+                                putString(getString(R.string.request_id), tempId)
+                                apply()
+                            }
+                        } else showSnakbar("Wrong ID or user doesn't exists.")
+                    }
+
+                    override fun onCancelled(p0: DatabaseError) {
+                        loadingDialog.dismiss()
+                        showSnakbar("Something went wrong!")
+                    }
+                })
+            } else {
+                showSnakbar("Please enter a valid Id.")
+                bind.requestServiceEt.error = "A valid Id is required."
             }
-            startDistanceService()
         }
 
-        showStartButton()
+//        showStartButton()
     }
 
-//    private fun isIDAvailable(): Boolean {
-//        dbRef.child(tempId)
-//    }
+    private fun showSnakbar(msg: String) {
+        Snackbar.make(bind.rootView, msg, Snackbar.LENGTH_SHORT).show()
+    }
 
     private fun startDistanceService() {
 
@@ -116,6 +189,8 @@ class MainActivity : AppCompatActivity() {
         fusedLocationClient.lastLocation.addOnSuccessListener {
             cuLat = it.latitude
             cuLng = it.longitude
+
+            loadingDialog.dismiss()
         }
 
         fusedLocationClient.lastLocation.addOnFailureListener {
@@ -125,13 +200,14 @@ class MainActivity : AppCompatActivity() {
                 }
                 .setAnchorView(bind.startBtn)
                 .show()
+            loadingDialog.dismiss()
         }
 
         distanceHandler()
     }
 
     private fun distanceHandler() {
-        dbRef.child(reqServiceId).addValueEventListener(object : ValueEventListener {
+        dbRef.child(requestId!!).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val lat = (snapshot.child("lat").value.toString()).toDouble()
                 val lng = (snapshot.child("lng").value.toString()).toDouble()
@@ -143,35 +219,42 @@ class MainActivity : AppCompatActivity() {
                 )
                 val distance = results[0]
 
-                val intDistance = distance.toInt()
-                val distUnit = if (intDistance > 1000) "Kms" else "meters"
+                var strDistance = if (distance > 1000) (distance/1000).toString() else distance.toInt().toString()
+                var distUnit = "meters"
 
-                bind.textView.text = "$intDistance $distUnit away"
-                startDistanceService()
+                if (distance > 1000) {
+                    strDistance = strDistance.substring(0, strDistance.indexOf('.')+2)
+                    distUnit = "Kms"
+                }
+
+                bind.textView.text = "$strDistance $distUnit away"
+//                startDistanceService()
             }
 
             override fun onCancelled(p0: DatabaseError) {
                 Log.e(TAG, "onCancelled: Firebase Database Error", p0.toException())
+                loadingDialog.dismiss()
             }
-
         })
+        loadingDialog.dismiss()
     }
 
     private fun databaseListener() {
-        var i = 0
-        dbRef.child(startServiceId).addValueEventListener(object : ValueEventListener {
+        dbRef.child(currentUserId!!).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val lat = snapshot.child("lat").value.toString()
                 val lng = snapshot.child("lng").value.toString()
 
-                bind.textView.text = "From Database ${i++}\nLatitude : $lat\nLongitude : $lng"
+                bind.textView.text = "Your Location:\nLatitude : $lat\nLongitude : $lng"
             }
 
             override fun onCancelled(p0: DatabaseError) {
                 Log.e(TAG, "onCancelled: Firebase Database Error", p0.toException())
+                loadingDialog.dismiss()
             }
 
         })
+        loadingDialog.dismiss()
     }
 
     // TODO: Send Current location
@@ -181,7 +264,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkLocationSettings() {
-        loadingDialog.show(supportFragmentManager, LOADING_DIALOG)
+        loadingDialog.show()
         val request = LocationSettingsRequest.Builder()
             .addLocationRequest(locationRequest).build()
         val client = LocationServices.getSettingsClient(this)
@@ -207,9 +290,12 @@ class MainActivity : AppCompatActivity() {
         val dialogBuild = MaterialAlertDialogBuilder(this)
         dialogBuild.setTitle("Stop service").setMessage("Are you sure you want to stop the service?")
             .setPositiveButton("Yes") { _, _ ->
+                loadingDialog.show()
                 showStartButton()
-                fusedLocationClient.removeLocationUpdates(locationCallback)
                 stopService(serviceIntent)
+                fusedLocationClient.removeLocationUpdates(locationCallback)
+                loadingDialog.dismiss()
+                dbRef.child(currentUserId!!).child("serviceRunning").setValue(false)
             }
             .setNegativeButton("No") { _, _ -> }
 
@@ -244,6 +330,7 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
+        startService(serviceIntent)
 
         fusedLocationClient.requestLocationUpdates(
             locationRequest,
@@ -261,11 +348,9 @@ class MainActivity : AppCompatActivity() {
             LOCATION_PERMISSION_REQUEST_CODE -> {
                 // If request is cancelled, the result arrays are empty.
                 if ((grantResults.isNotEmpty() &&
-                            grantResults[0] == PackageManager.PERMISSION_GRANTED &&
-                            grantResults[1] == PackageManager.PERMISSION_GRANTED)
+                            grantResults[0] == PackageManager.PERMISSION_DENIED &&
+                            grantResults[1] == PackageManager.PERMISSION_DENIED)
                 ) {
-                    checkLocationSettings()
-                } else {
                     Toast.makeText(this, "Location permission denied.", Toast.LENGTH_SHORT).show()
                 }
                 return
@@ -279,27 +364,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    val locationCallback = object : LocationCallback() {
+    private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
-            if (locationResult != null) {
-                startService(serviceIntent)
-                showStopButton()
-                loadingDialog.dismiss()
-                locationResult.locations.forEach {
-                    val lat = it.latitude
-                    val lng = it.longitude
+            showStopButton()
+            loadingDialog.dismiss()
+            locationResult.locations.forEach {
+                val lat = it.latitude
+                val lng = it.longitude
 
-                    Log.d(TAG, "onLocationResult: Latitude - ${it.latitude}")
-                    Log.d(TAG, "onLocationResult: Longitude - ${it.longitude}")
+                Log.d(TAG, "onLocationResult: Latitude - ${it.latitude}")
+                Log.d(TAG, "onLocationResult: Longitude - ${it.longitude}")
 
 //                    bind.textView.text = "Latitude : $lat\nLongitude : $lng"
 
-                    dbRef.child(startServiceId).apply {
-                        child("lat").setValue(lat)
-                        child("lng").setValue(lng)
-                    }
+                dbRef.child(currentUserId!!).apply {
+                    child("lat").setValue(lat)
+                    child("lng").setValue(lng)
                 }
             }
+            loadingDialog.dismiss()
         }
     }
 
@@ -319,6 +402,13 @@ class MainActivity : AppCompatActivity() {
 //        bind.startBtn.setBackgroundColor(ContextCompat.getColor(this, androidx.appcompat.R.color.material_grey_600))
 //        bind.stopBtn.isEnabled = true
 //        bind.stopBtn.setBackgroundColor(ContextCompat.getColor(this, R.color.red))
+    }
+    
+    private fun loadingDialog(): AlertDialog {
+        val builder = MaterialAlertDialogBuilder(this)
+        builder.setView(R.layout.loading_dialog_layout)
+        
+        return builder.create()
     }
 
     companion object {

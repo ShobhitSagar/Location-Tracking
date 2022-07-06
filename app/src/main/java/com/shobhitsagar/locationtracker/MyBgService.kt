@@ -27,6 +27,7 @@ class MyBgService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stopSelf()
     }
 
     override fun onBind(intent: Intent): IBinder {
