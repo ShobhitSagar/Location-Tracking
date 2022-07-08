@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.database.*
@@ -148,6 +149,13 @@ class MainActivity : AppCompatActivity() {
                 showSnakbar("Please enter a valid Id.")
                 bind.requestServiceEt.error = "A valid Id is required."
             }
+        }
+
+        // View Location Btn
+        bind.viewLocationBtn.setOnClickListener {
+            val bottomSheetDialog = BottomSheetDialog(this)
+            bottomSheetDialog.setContentView(R.layout.bottom_sheet_layout)
+            bottomSheetDialog.show()
         }
 
 //        showStartButton()
